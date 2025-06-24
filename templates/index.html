@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Volunteer Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 font-sans">
+  <!-- Navbar -->
+  <nav id="navbar" class="hidden bg-purple-700 text-white p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold">Volunteer Dashboard</h1>
+   <div class="flex gap-4 items-center">
+  <button onclick="showPage('home')">Home</button>
+  <button onclick="showPage('leaderboard')">Leaderboard</button>
+  <button onclick="showPage('profile')">Profile</button>
+  <button onclick="openNotifPage()">Contact Us <span id="notifCount" class="ml-1 bg-red-500 text-white rounded-full px-2 hidden text-xs">0</span></button>
+  <button onclick="logoutUser()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded">Logout</button> <!-- 🆕 -->
+</div>
+
+  </nav>
+
+  <!-- Login Page -->
+  <div id="login" class="page p-8 max-w-md mx-auto mt-10 bg-white rounded-lg shadow">
+    <h2 class="text-2xl font-bold mb-4">Login🔐</h2>
+    <input id="username" type="text" placeholder="Name" class="w-full p-2 border rounded mb-2" />
+    <input id="email" type="email" placeholder="Email" class="w-full p-2 border rounded mb-2" />
+    <input id="password" type="password" placeholder="Password" class="w-full p-2 border rounded mb-4" />
+    <button onclick="loginUser()" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 w-full">Login</button>
+  </div>
+
+  <!-- Home Page -->
+  <div id="home" class="page hidden p-8 max-w-3xl mx-auto">
+    <h2 class="text-2xl font-bold mb-4">Welcome, <span id="profileName"></span>!</h2>
+    <div class="mt-8">
+      <h3 class="text-xl font-semibold mb-2">Top 3 Volunteers</h3>
+      <div id="topThreeContainer" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+    </div>
+  </div>
+
+  <!-- Leaderboard Page -->
+  <div id="leaderboard" class="page hidden p-8 max-w-3xl mx-auto">
+<h2 class="text-2xl font-bold mb-4"> Leaderboard </h2>
+    <ul id="leaderboardList" class="space-y-2"></ul>
+  </div>
+
+  <!-- Profile Page -->
+  <div id="profile" class="page hidden p-8 max-w-3xl mx-auto text-left">
+    <h2 class="text-2xl font-bold mb-4">Your Profile</h2>
+    <div class="text-6xl mb-4" id="profileEmojiDisplay">🙂</div>
+    <p><strong>Name:</strong> <span id="profileNameFull"></span></p>
+    <p><strong>Email:</strong> <span id="profileEmail"></span></p>
+    <p><strong>Score:</strong> <span id="profileScore"></span> pts</p>
+    <p><strong>Attendance:</strong> <span id="profileAttendance"></span></p>
+    <div class="mt-4">
+      <label for="profilePic" class="block mb-1">Change Profile Picture (emoji):</label>
+      <select id="profilePic" class="p-2 border rounded">
+        <option>🙂</option>
+          <option>😎</option>
+          <option>🌸</option>
+          <option>👜</option>
+          <option>👑</option>
+          <option>✨</option>
+          <option>🧠</option>
+          <option>🔥</option>
+
+      </select>
+    </div>
+  </div>
+
+  <!-- Notifications Page -->
+  <div id="notifications" class="page hidden p-8 max-w-3xl mx-auto">
+    <h2 class="text-2xl font-bold mb-4">Contact Us</h2>
+    <input id="notifReplyInput" type="text" placeholder="Enter your message..." class="p-2 border rounded w-full mb-2" />
+    <button onclick="sendReply()" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">Send Message</button>
+    <p id="contactStatus" class="text-green-600 mt-3 hidden">✅ Message sent to the admin!</p>
+
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    let volunteers = [];
+    const navbar = document.getElementById("navbar");
+    const profileNameEl = document.getElementById("profileName");
+    const profileEmailEl = document.getElementById("profileEmail");
+    const profileScoreEl = document.getElementById("profileScore");
+    const profileAttendanceEl = document.getElementById("profileAttendance");
+    const leaderboardList = document.getElementById("leaderboardList");
+    const topThreeContainer = document.getElementById("topThreeContainer");
+
+    function showPage(pageId) {
+      document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
+      document.getElementById(pageId)?.classList.remove("hidden");
+    }
+
+   function loginUser() {
+    const username = document.getElementById("username").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    if (!username || !email || !password) return alert("All fields are required.");
+
+    // ✅ Match name and email together
+    const user = volunteers.find(v =>
+      v.Name.toLowerCase().trim() === username.toLowerCase().trim() &&
+      v.Email.toLowerCase().trim() === email.toLowerCase().trim()
+    );
+
+    if (!user) {
+      alert("Invalid name or email. Please contact the admin.");
+      return;
+    }
+
+    localStorage.setItem("volunteerName", username);
+    localStorage.setItem("volunteerEmail", email);
+
+    const emoji = user?.Emoji || "🙂";
+
+    profileNameEl.innerText = username;
+    document.getElementById("profileNameFull").innerText = `${emoji} ${username}`;
+    profileEmailEl.innerText = email;
+    profileScoreEl.innerText = user.Score || 0;
+    document.getElementById("profileEmojiDisplay").innerText = emoji;
+
+    fetch(`/attendance/${username}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.attended !== undefined) {
+          profileAttendanceEl.innerText = `${data.attended} out of ${data.total}`;
+        } else {
+          profileAttendanceEl.innerText = "No data";
+        }
+      });
+
+    navbar.classList.remove("hidden");
+    showPage("home");
+    renderLeaderboard();
+    renderTopThree();
+  }
+
+    document.getElementById("profilePic").addEventListener("change", (e) => {
+  const emoji = e.target.value;
+  const username = localStorage.getItem("volunteerName");
+  const email = localStorage.getItem("volunteerEmail");
+
+  // Update UI
+  document.getElementById("profileEmojiDisplay").innerText = emoji;
+  document.getElementById("profileNameFull").innerText = `${emoji} ${username}`;
+
+  // Save to localStorage
+  localStorage.setItem("volunteerEmoji", emoji);
+
+  // Optional: send to server
+  fetch("/update-emoji", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: username, email, emoji })
+  }).then(res => res.json()).then(res => {
+    console.log("Emoji updated:", res.status);
+  }).catch(() => {
+    console.warn("Could not update emoji on server");
+  });
+});
+
+
+    function renderLeaderboard() {
+      leaderboardList.innerHTML = "";
+      [...volunteers].sort((a, b) => b.Score - a.Score).forEach((v, i) => {
+        const li = document.createElement("li");
+        li.className = li.className = "p-3 bg-purple-50 rounded shadow flex justify-between items-center transition-transform duration-200 transform hover:-translate-y-1 hover:shadow-lg hover:bg-purple-100 cursor-pointer";
+        li.innerHTML = `<span class="font-semibold">${i + 1}. ${v.Name} ${v.Emoji || ""}</span><span>${v.Score} pts</span>`;
+        leaderboardList.appendChild(li);
+      });
+    }
+
+    function renderTopThree() {
+     const sorted = [...volunteers].sort((a, b) => b.Score - a.Score).slice(0, 3);
+     const medals = ['🥇', '🥈', '🥉'];
+     topThreeContainer.innerHTML = sorted.map((v, i) => `
+    <div class="bg-purple-100 border border-purple-300 p-4 rounded-lg shadow text-center">
+      <h3 class="text-xl font-bold text-purple-700">${medals[i]} ${v.Name} ${v.Emoji || ''}</h3>
+      <p class="text-lg text-gray-700 mt-1">${v.Score} pts</p>
+    </div>
+  ` ).join("");
+    }
+
+    
+
+  function sendReply() {
+  const message = document.getElementById("notifReplyInput").value.trim();
+  const statusEl = document.getElementById("contactStatus");
+
+  if (!message) {
+    alert("Please enter a message.");
+    return;
+  }
+
+  const name = localStorage.getItem("volunteerName");
+  const email = localStorage.getItem("volunteerEmail");
+
+  fetch("/contact", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email, message })
+  })
+    .then(res => res.json())
+    .then(response => {
+      if (response.status === "sent") {
+        statusEl.textContent = "✅ Message sent to the admin!";
+        statusEl.classList.remove("hidden", "text-red-600");
+        statusEl.classList.add("text-green-600");
+        document.getElementById("notifReplyInput").value = "";
+      } else {
+        statusEl.textContent = "❌ Failed to send the message.";
+        statusEl.classList.remove("hidden", "text-green-600");
+        statusEl.classList.add("text-red-600");
+      }
+
+      // Hide message after 4 seconds
+      setTimeout(() => {
+        statusEl.classList.add("hidden");
+      }, 4000);
+    })
+    .catch(() => {
+      statusEl.textContent = "❌ Error contacting server.";
+      statusEl.classList.remove("hidden", "text-green-600");
+      statusEl.classList.add("text-red-600");
+
+      setTimeout(() => {
+        statusEl.classList.add("hidden");
+      }, 4000);
+    });
+}
+
+    function openNotifPage() {
+      showPage("notifications");
+    }
+    
+    function logoutUser() {
+    localStorage.clear();
+  navbar.classList.add("hidden");
+  showPage("login");
+  document.getElementById("username").value = "";
+  document.getElementById("email").value = "";
+  document.getElementById("password").value = "";
+}
+
+    async function fetchVolunteers() {
+      try {
+        const res = await fetch("/scores");
+        volunteers = await res.json();
+        renderLeaderboard();
+        renderTopThree();
+      } catch (err) {
+        console.error("Error loading volunteer data:", err);
+      }
+    }
+
+    window.onload = async () => {
+      await fetchVolunteers();
+      const savedName = localStorage.getItem("volunteerName");
+      const savedEmail = localStorage.getItem("volunteerEmail");
+      if (savedName && savedEmail) {
+        const user = volunteers.find(v => v.Name.toLowerCase() === savedName.toLowerCase());
+        const emoji = localStorage.getItem("volunteerEmoji") || user?.Emoji || "🙂";
+        
+        profileNameEl.innerText = savedName;
+        document.getElementById("profileNameFull").innerText = `${emoji} ${savedName}`;
+        profileEmailEl.innerText = savedEmail;
+        profileScoreEl.innerText = user ? user.Score : 0;
+        document.getElementById("profileEmojiDisplay").innerText = emoji;
+
+        fetch(`/attendance/${savedName}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.attended !== undefined) {
+              profileAttendanceEl.innerText = `${data.attended} out of ${data.total}`;
+            } else {
+              profileAttendanceEl.innerText = "No data";
+            }
+          });
+
+        navbar.classList.remove("hidden");
+        showPage("home");
+        renderLeaderboard();
+        renderTopThree();
+      } else {
+        showPage("login");
+      } 
+
+    };
+  </script>
+</body>
+</html>
